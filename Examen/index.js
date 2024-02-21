@@ -1,10 +1,17 @@
 const express = require('express');
+const session = require('express-session');
 const morgan = require('morgan');
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(session({
+    user: 'admin',
+    secret: '784rf8hes94k5=1ks',
+    resave: false,
+    saveUninitialized: true,
+}));
 
 // Función para crear cookies
 function createCookies(req, res) {
@@ -21,7 +28,21 @@ function createCookies(req, res) {
     res.cookie('InfoNavegador', agent, {
     maxAge: 60000 * 2, // Expira en 2 minutos
     });
-}
+};
+app.use((req, res, next) => {
+    if(!req.session.visitados){
+        req.session.visitados={}
+    }
+    const rutaActual =req.path
+    req.session.visitados[rutaActual]=req.session.visitados[rutaActual]||0
+    req.session.visitados[rutaActual]++
+    if(req.session.visitados[rutaActual]===3){
+        const msg= `Te agrada la pagina de la ruta ${rutaActual}`
+        res.status(200).send(`<script>alert('${msg}')</script>`)
+    }else{
+        next()
+    }
+});
 
 // Datos de prueba
 const data = [
@@ -162,6 +183,10 @@ app.get('/query', (req, res) => {
     if (!user) {
     res.status(400).send
     }
+});
+app.get('/historial', (req, res) => {
+    const paginas = req.session.visitados
+    res.send(`Páginas consultadas: ${JSON.stringify(paginas)}`);
 });
 app.listen(port, () => {
     console.log(`Escuchando puerto `,port);
